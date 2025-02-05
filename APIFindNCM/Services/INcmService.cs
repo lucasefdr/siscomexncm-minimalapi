@@ -6,5 +6,5 @@ namespace APIFindNCM.Services;
 internal interface INcmService
 {
     Task<NcmDtoResponse> GetAll();
-    Task<NcmDto> GetByCodNcm(string codNcm);
+    Task<NcmDto?> GetByCodNcm(string codNcm);
 }
