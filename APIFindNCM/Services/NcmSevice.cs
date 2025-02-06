@@ -31,17 +31,26 @@ internal class NcmService : INcmService
     {
         var apiResponse = await FetchNcmDataAsync();
 
-        var result = apiResponse?.Ncms
-            .Where(ncm => FilterByNivel(ncm.Codigo, nivel))
-            .Select(MapToDto)
+        var query = apiResponse?.Ncms.AsQueryable() ?? Enumerable.Empty<Ncm>().AsQueryable();
+
+        // Filtra sem materializar a coleção (mantém como IQueryable)
+        query = query.Where(ncm => FilterByNivel(ncm.Codigo, nivel));
+
+        int totalFiltered = query.Count(); // Conta antes de paginar
+
+        var paginatedResult = query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToList() ?? [];
+            .Select(MapToDto) // Transforma apenas os dados paginados
+            .ToList();
 
         return new NcmDtoResponse
         {
-            Total = result.Count,
-            NcmList = result
+            Total = totalFiltered,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalFiltered / pageSize),
+            NcmList = paginatedResult
         };
     }
 
