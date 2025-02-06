@@ -1,6 +1,7 @@
 ﻿using APIFindNCM.Domain.Dtos;
 using APIFindNCM.Domain;
 using System.Text.Json;
+using APIFindNCM.Domain.Enums;
 
 namespace APIFindNCM.Services;
 
@@ -14,7 +15,7 @@ internal class NcmService : INcmService
         _clientFactory = clientFactory;
     }
 
-    public async Task<NcmDto?> GetByCodNcm(string codNcm)
+    public async Task<NcmDto?> GetNcmByCodigo(string codNcm)
     {
         var apiResponse = await FetchNcmDataAsync();
 
@@ -26,21 +27,36 @@ internal class NcmService : INcmService
         return ncm is null ? null : MapToDto(ncm);
     }
 
-
-
-    public async Task<NcmDtoResponse> GetAll()
+    public async Task<NcmDtoResponse> GetNcmByNivel(NcmNivel? nivel, int page, int pageSize)
     {
         var apiResponse = await FetchNcmDataAsync();
 
         var result = apiResponse?.Ncms
-            .Where(ncm => ncm.Codigo.Length == 10)
+            .Where(ncm => FilterByNivel(ncm.Codigo, nivel))
             .Select(MapToDto)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToList() ?? [];
 
         return new NcmDtoResponse
         {
             Total = result.Count,
             NcmList = result
+        };
+    }
+
+    private static bool FilterByNivel(string codigo, NcmNivel? nivel)
+    {
+        var codigoNcm = codigo.Replace(".", "");
+
+        return nivel switch
+        {
+            NcmNivel.Capitulo => codigoNcm.Length == 2,
+            NcmNivel.Posicao => codigoNcm.Length == 4,
+            NcmNivel.SubPosicao => codigoNcm.Length == 6,
+            NcmNivel.Item => codigoNcm.Length == 7,
+            NcmNivel.SubItem => codigoNcm.Length == 8,
+            _ => true
         };
     }
 
@@ -66,7 +82,6 @@ internal class NcmService : INcmService
             throw;
         }
     }
-
     private NcmDto? MapToDto(Ncm ncm)
     {
         return new NcmDto
@@ -77,7 +92,6 @@ internal class NcmService : INcmService
             DataFimValidade = ParseData(ncm.DataFim)
         };
     }
-
     private static string ParseData(string data)
     {
         if (DateTime.TryParse(data, out var parsedDate))
